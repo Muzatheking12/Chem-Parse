@@ -1,8 +1,8 @@
-<p> <h1>Chem-Parser</h1> 
-<img> src="Img/Chem-Parse.ico", align="left"
+<h1>Chem-Parser</h1> 
+<img src="Img/Chem-Parse.ico" align="left" alt="Chem-Parser Icon" width="64">
 
 
-</p
+
 <p> Molecule Sketcher with Parser to Table -> Output as .xlsx, .csv, .smi and .sdf (Perfect for QSAR data curation) </p>
 <h2>Instructions:</h2>
 <li>Draw in Canvas</li>
