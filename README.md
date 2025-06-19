@@ -1,5 +1,5 @@
 <h1>Chem-Parser</h1> 
-<img src="Img/Chem-Parse.ico" align="left" alt="Chem-Parser Icon" width="64">
+<img src="Img/ms-draw.ico" align="left" alt="Chem-Parser Icon" width="64">
 
 
 
