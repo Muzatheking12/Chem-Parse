@@ -1,7 +1,7 @@
 <p> <h1>Chem-Parser</h1>
 <img src="Img\ms-draw.ico" >
 Fast Molecule Sketching with Immediate Parsing to Embedded Table , Translating to Various Output: .XLSX, .SDF, .CSV, .SMI, .MOL2, .PDBQT
-<img src="Imge\Chem-Parse.png" >
+<img src="Img\Chem-Parse.png" >
 </p>
 
 <h2>Instruction:</h2>
