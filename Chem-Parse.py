@@ -4,12 +4,15 @@ import os
 import copy
 from rdkit.Chem import  AllChem, rdDepictor
 from rdkit.Chem.Draw import rdMolDraw2D
-from PySide6.QtWidgets import  QApplication, QFileDialog
+from PySide6.QtWidgets import  QApplication, QFileDialog, QDialog, QVBoxLayout, QTextEdit
 from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6.QtCore import QProcess
 from PySide6.QtGui import QIcon,  QKeySequence
 from molEditWidget import MolEditWidget
 from ptable_widget import PTable
 from rdkit import Chem
+import shutil
+import numpy as np
 
 
 
@@ -25,6 +28,7 @@ cleanstr = os.path.join(mainpath, r'Img\clean.png')
 cursormode = os.path.join(mainpath, r'Img\cursor_mode.png')
 removeatom = os.path.join(mainpath, r'Img\Remove.png')
 Stereopng = os.path.join(mainpath, r'Img\Stereo.png')
+Stereoezpng = os.path.join(mainpath, r'Img\ez.png')
 tablepng = os.path.join(mainpath, r'Img\table.png')
 trashpng = os.path.join(mainpath, r'Img\trash.png')
 xypng = os.path.join(mainpath, r'Img\xy.png')
@@ -40,8 +44,128 @@ cyclohexane = os.path.join(mainpath, r'Img\cyclohexane')
 cyclopentane = os.path.join(mainpath, r"Img\cyclopentane.png")
 cyclobutane = os.path.join(mainpath, r"Img\cyclobutane.png")
 cyclopropane = os.path.join(mainpath, r"Img\cyclopropane.png")
+output_dir = os.path.join(mainpath, r"OpenBabel\output")
+mol2batch = os.path.join(mainpath, r"OpenBabel\mol2prep.bat")
+pdbqtbatch = os.path.join(mainpath, r"OpenBabel\pdbqtprep.bat")
 
 
+class BatchProcessMOL2Dialog(QDialog):
+    def __init__(self, batch_file_path, forcefield, protonation_state, steps):
+        super().__init__()
+        self.setWindowTitle("Energy Minimization")
+        self.setWindowIcon(QIcon.fromTheme(appicon))
+        self.resize(600, 400)
+
+        # Text box to show logs
+        self.text_edit = QTextEdit(self)
+        self.text_edit.setStyleSheet("""
+    QTextEdit {
+        background-color: #1e1e1e;
+        color: #dcdcdc;
+        font-family: Consolas, Courier New, monospace;
+        font-size: 14px;
+        border: none;
+        padding: 5px;
+    }
+""")
+        self.text_edit.setReadOnly(True)
+        self.log_data = ""
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.text_edit)
+        forcefield = str(forcefield)
+        protonation_state = str(protonation_state)
+        steps = str(steps)
+
+        # QProcess setup
+        self.process = QProcess(self)
+        self.process.setProgram("cmd.exe")
+        self.process.setArguments(["/c", batch_file_path, forcefield, protonation_state, steps])  # /c means run then exit
+        self.text_edit.append(f"FORCEFIELD: {forcefield}\n PROTONATION_STATE: {protonation_state} \n STEPS: {steps} \n OUTPUT: MOL2")
+        self.process.readyReadStandardOutput.connect(self.handle_stdout)
+        self.process.readyReadStandardError.connect(self.handle_stderr)
+        self.process.finished.connect(self.on_finished)
+
+        # Start the batch process
+        self.append_log(f"Starting: {batch_file_path}")
+        self.append_log(f"Arguments:\n  Forcefield: {forcefield}\n  Protonation: {protonation_state}\n  Steps: {steps}")
+        self.process.start()
+
+
+    def append_log(self, text):
+        self.log_data += text + "\n"
+        self.text_edit.append(text)
+
+    def handle_stdout(self):
+        text = self.process.readAllStandardOutput().data().decode()
+        self.text_edit.append(text)
+        self.append_log(f"{text}")
+
+    def handle_stderr(self):
+        text = self.process.readAllStandardError().data().decode()
+        self.text_edit.append(f"{text}")
+        self.append_log(f"{text}")
+
+    def on_finished(self):
+        self.text_edit.append("\nBatch process completed.")
+        print(self.log_data)  # Print the log data to console
+        self.accept() 
+
+
+class BatchProcessPDBQTDialog(QDialog):
+    def __init__(self, batch_file_path, forcefield, protonation_state, steps):
+        super().__init__()
+        self.setWindowTitle("Energy Minimization")
+        self.setWindowIcon(QIcon.fromTheme(appicon))
+        self.resize(600, 400)
+
+        # Text box to show logs
+        self.text_edit = QTextEdit(self)
+        self.text_edit.setStyleSheet("""
+    QTextEdit {
+        background-color: #1e1e1e;
+        color: #dcdcdc;
+        font-family: Consolas, Courier New, monospace;
+        font-size: 14px;
+        border: none;
+        padding: 5px;
+    }
+""")
+        self.text_edit.setReadOnly(True)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.text_edit)
+
+        # QProcess setup
+        forcefield = str(forcefield)
+        protonation_state = str(protonation_state)
+        steps = str(steps)
+        
+
+        self.process = QProcess(self)
+        self.text_edit.append(f"FORCEFIELD: {forcefield}\n PROTONATION_STATE: {protonation_state} \n STEPS: {steps} \n OUTPUT: PDBQT")
+        self.process.setProgram("cmd.exe")
+        self.process.setArguments(["/c", batch_file_path, forcefield, protonation_state, steps])  # /c means run then exit
+
+        self.process.readyReadStandardOutput.connect(self.handle_stdout)
+        self.process.readyReadStandardError.connect(self.handle_stderr)
+        self.process.finished.connect(self.on_finished)
+
+        # Start the batch process
+        self.process.start()
+
+    def handle_stdout(self):
+        text = self.process.readAllStandardOutput().data().decode()
+        self.text_edit.append(text)
+
+    def handle_stderr(self):
+        text = self.process.readAllStandardError().data().decode()
+        self.text_edit.append(f"{text}")
+
+    def on_finished(self):
+        self.text_edit.append("\nBatch process completed.")
+        self.accept() 
+    
 class StyledMessageDialog(QtWidgets.QDialog):
     def __init__(self, title, message, parent=None):
         super().__init__(parent)
@@ -444,9 +568,35 @@ class MainWindow(QtWidgets.QMainWindow):
         rightWidget.setContentsMargins(10, 10, 60, 10)
         rightLayout = QtWidgets.QVBoxLayout(rightWidget)
         rightLayout.setAlignment(QtCore.Qt.AlignTop)
+        def process_column(df, column_name, method):
+                """
+                Processes a column in the DataFrame based on the selected method.
+                
+                Parameters:
+                    df (pd.DataFrame): The input DataFrame.
+                    column_name (str): The column to process.
+                    method (str): One of the keys from ylabel_processors.
+
+                Returns:
+                    pd.Series: The processed column.
+                """
+                ylabel_processors = {
+                "None": lambda col: col,
+                "pIC50(nm)": lambda col: -np.log10(col * 1e-9),   # Convert nM to M then to pIC50
+                "pIC50(mm)": lambda col: -np.log10(col * 1e-3),   # Convert mM to M then to pIC50
+                "LOG": lambda col: np.log10(col),
+                "Min-Max": lambda col: (col - col.min()) / (col.max() - col.min()) if col.max() != col.min() else col * 0,
+                "STD scalar": lambda col: (col - col.mean()) / col.std() if col.std() != 0 else col * 0
+            }
+                if method not in ylabel_processors:
+                    raise ValueError(f"Unknown method: {method}")
+                import pandas as pd
+                df[column_name] = pd.to_numeric(df[column_name], errors='coerce')
+                df[column_name] = ylabel_processors[method](df[column_name])
 
         def savetable(self):
             # Open save dialog with filters
+          
             options = QtWidgets.QFileDialog.Options()
             filename, selected_filter = QtWidgets.QFileDialog.getSaveFileName(
                 self,
@@ -475,6 +625,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 try:
                     import pandas as pd
                     df = pd.DataFrame(data, columns=headers)
+                    method = ylabelcombo.currentText()
+                    process_column(df, "Value", method)
                     df.to_excel(filename, index=False)
                     StyledMessageDialog("Success", f"XLSX file saved to {filename}", self).exec()
                 except Exception as e:
@@ -484,6 +636,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 try:
                     import pandas as pd
                     df = pd.DataFrame(data, columns=headers)
+                    method = ylabelcombo.currentText()
+                    process_column(df, "Value", method)
                     df.to_csv(filename, index=False)
                     StyledMessageDialog("Success", f"CSV file saved to {filename}", self).exec()
                 except ImportError:
@@ -518,11 +672,142 @@ class MainWindow(QtWidgets.QMainWindow):
 
         clearBtn = QtWidgets.QPushButton("Clear")
         clearBtn.clicked.connect(cleartable)
+        def OPT(self):
+         
+            from rdkit import Chem
+            from rdkit.Chem import AllChem
+            if os.path.isdir(output_dir):
+                for file in os.listdir(output_dir):
+                    os.remove(os.path.join(output_dir, file))
+
+            options = QtWidgets.QFileDialog.Options()
+            filename = QtWidgets.QFileDialog.getExistingDirectory(
+                self,
+                "Save 3D Structures",
+                "",
+                options=options
+            )
+            if not filename:
+                return
+            headers = [self.tableWidget.horizontalHeaderItem(i).text() for i in range(self.tableWidget.columnCount())]
+            try:
+                smiles_idx = headers.index("SMILES")
+                name_idx = headers.index("Name")
+            except ValueError:
+             
+                StyledMessageDialog("Error", "Table must have 'SMILES' , 'Name' columns to save as SDF.", self).exec()
+                return
+           
+            for row in range(self.tableWidget.rowCount()):
+                smiles_item = self.tableWidget.item(row, smiles_idx)
+                name_item = self.tableWidget.item(row, name_idx)
+                if smiles_item and name_item:
+                    smiles = smiles_item.text().strip()
+                    name = name_item.text().strip()
+                    text = combofile.currentText()
+                    dirx = os.path.dirname(output_dir)
+                    fullname =  name + ".sdf"
+                    fullpath = os.path.join(dirx, fullname)
+                    writer = Chem.SDWriter(fullpath)
+                        
+
+                    if smiles:
+                        mol = Chem.MolFromSmiles(smiles)
+                        if mol:
+                            mol = Chem.AddHs(mol)
+                            try:
+                               
+                                AllChem.EmbedMolecule(mol, AllChem.ETKDG())
+                                AllChem.UFFOptimizeMolecule(mol)
+                                writer.write(mol)
+                            except Exception as e:
+                                self.editor.logger.warning(f"3D generation failed for {name}: {e}")
+                                StyledMessageDialog("Error", f"3D generation failed for {name}: {e}", self).exec()
+            writer.close()
+            dirx = os.path.dirname(output_dir) 
+            os.chdir(dirx)
+            if combofile.currentText() == 'MOL2':
+                ff = ffcombo.currentText()
+                try:
+                 prot = prot_line.text()
+                 stepsx = stepsline.text()
+                 protfloat = float(prot)
+                 stepsxy = int(stepsx)
+                 if protfloat < 1 :
+                     return StyledMessageDialog("Error", "Protonation state should be in range 1-14", self).exec()
+                 elif protfloat > 14:
+                     return StyledMessageDialog("Error", "Protonation state should be in range 1-14", self).exec()
+                 dialog = BatchProcessMOL2Dialog(mol2batch, ff, protfloat, stepsxy)
+                 dialog.exec()
+                 StyledMessageDialog("Chem-Parser", "Successfully Converted to MOL2", self).exec()
+                 files = os.listdir(output_dir)
+                 if files:
+                     for file in files:
+                         path = os.path.join(output_dir, file)
+                         shutil.move(path, filename)
+                     StyledMessageDialog("Chem-Parser", "Successfully Saved MOL2", self).exec()
+
+                except Exception as e:
+                    StyledMessageDialog("Error", "Give Proper Value Type ")
+            elif combofile.currentText() == 'PDBQT':
+
+                ff = ffcombo.currentText()
+                try:
+                 prot = prot_line.text()
+                 stepsx = stepsline.text()
+                 protfloat = float(prot)
+                 stepsxy = int(stepsx)
+                 if protfloat < 1 :
+                     return StyledMessageDialog("Error", "Protonation state should be in range 1-14", self).exec()
+                 elif protfloat > 14:
+                     return StyledMessageDialog("Error", "Protonation state should be in range 1-14", self).exec()
+                 dialog = BatchProcessPDBQTDialog(pdbqtbatch, ff, protfloat, stepsxy)
+                 dialog.exec()
+                 StyledMessageDialog("Chem-Parser", "Successfully Converted to PDBQT", self).exec()
+                 files = os.listdir(output_dir)
+                 if files:
+                     for file in files:
+                         path = os.path.join(output_dir, file)
+                         shutil.move(path, filename)
+                     StyledMessageDialog("Chem-Parser", "Successfully Saved PDBQT", self).exec()
+                 
+                except Exception as e:
+                    StyledMessageDialog("Error", "Give Proper Value Type ")
+
+
         def save3D(self):
             from rdkit import Chem
             from rdkit.Chem import AllChem
 
-            # Open save dialog for SDF
+            row_count = self.tableWidget.rowCount()
+            col_count = self.tableWidget.columnCount()
+            headers = [self.tableWidget.horizontalHeaderItem(i).text() for i in range(col_count)]
+            data = []
+            for row in range(row_count):
+                row_data = []
+                for col in range(col_count):
+                    item = self.tableWidget.item(row, col)
+                    row_data.append(item.text() if item else "")
+                data.append(row_data)
+            import pandas as pd
+            df = pd.DataFrame(data, columns=headers)
+            method = ylabelcombo.currentText()
+            if "Value" in df.columns:
+                ylabel_processors = {
+                    "None": lambda col: col,
+                    "pIC50(nm)": lambda col: -np.log10(col * 1e-9),   # Convert nM to M then to pIC50
+                    "pIC50(mm)": lambda col: -np.log10(col * 1e-3),   # Convert mM to M then to pIC50
+                    "LOG": lambda col: np.log10(col),
+                    "Min-Max": lambda col: (col - col.min()) / (col.max() - col.min()) if col.max() != col.min() else col * 0,
+                    "STD scalar": lambda col: (col - col.mean()) / col.std() if col.std() != 0 else col * 0
+                }
+                try:
+                    import pandas as pd
+                    df["Value"] = pd.to_numeric(df["Value"], errors='coerce')
+                    df["Value"] = ylabel_processors[method](df["Value"])
+                except Exception as e:
+                    StyledMessageDialog("Error", f"Failed to process 'Value' column: {e}", self).exec()
+                    return
             options = QtWidgets.QFileDialog.Options()
             filename, _ = QtWidgets.QFileDialog.getSaveFileName(
                 self,
@@ -534,44 +819,96 @@ class MainWindow(QtWidgets.QMainWindow):
             if not filename:
                 return
 
-            # Find SMILES and Name column indices
-            headers = [self.tableWidget.horizontalHeaderItem(i).text() for i in range(self.tableWidget.columnCount())]
+            # Validate necessary columns
             try:
                 smiles_idx = headers.index("SMILES")
                 name_idx = headers.index("Name")
             except ValueError:
-             
-                StyledMessageDialog("Error", "Table must have 'SMILES' and 'Name' columns to save as SDF.", self).exec()
+                StyledMessageDialog("Error", "Table must have 'SMILES' and 'Name' columns.", self).exec()
                 return
+
             writer = Chem.SDWriter(filename)
-            for row in range(self.tableWidget.rowCount()):
-                smiles_item = self.tableWidget.item(row, smiles_idx)
-                name_item = self.tableWidget.item(row, name_idx)
-                if smiles_item and name_item:
-                    smiles = smiles_item.text().strip()
-                    name = name_item.text().strip()
-                    if smiles:
-                        mol = Chem.MolFromSmiles(smiles)
-                        if mol:
-                            mol = Chem.AddHs(mol)
-                            try:
-                                AllChem.EmbedMolecule(mol, AllChem.ETKDG())
-                                AllChem.UFFOptimizeMolecule(mol)
-                                mol.SetProp("_Name", name)
-                                writer.write(mol)
-                            except Exception as e:
-                                self.editor.logger.warning(f"3D generation failed for {name}: {e}")
+            for row in range(row_count):
+                smiles = df.at[row, "SMILES"]
+                name = df.at[row, "Name"]
+                value = df.at[row, "Value"] if "Value" in df.columns else None
+
+                if smiles and name:
+                    mol = Chem.MolFromSmiles(smiles)
+                    if mol:
+                        mol = Chem.AddHs(mol)
+                        try:
+                            steps = stepsline.text()
+                            int_steps = int(steps)
+                            AllChem.EmbedMolecule(mol, AllChem.ETKDG())
+                            AllChem.UFFOptimizeMolecule(mol, maxIters=int_steps)
+                        except Exception as e:
+                            StyledMessageDialog("Chem-Parse", "Steps should be an integer", self).exec()
+                            continue
+
+                        mol.SetProp("_Name", name)
+                        if value is not None and pd.notna(value):
+                            mol.SetProp("_Value", str(value))
+
+                        writer.write(mol)
+
             writer.close()
             StyledMessageDialog("Success", f"3D structures saved to {filename}", self).exec()
+            # Open save dialog for SDF
+            
+        def choiceformat(self):
+            try:
+                text = combofile.currentText()
+                if text == 'SDF':
+                    save3D(self)
+                else:
+                    OPT(self)
+            except Exception as e:
+                StyledMessageDialog("Error", str(e), self).exec
 
-        save3DBtn = QtWidgets.QPushButton("3D-SDF")
-        save3DBtn.clicked.connect(lambda: save3D(self))
+        save3DBtn = QtWidgets.QPushButton("3D")
+        save3DBtn.clicked.connect(lambda: choiceformat(self))
+        filelabel = QtWidgets.QLabel("3D Format:")
+        combofile = QtWidgets.QComboBox()
+        combofile.addItem("SDF")
+        combofile.addItem("MOL2")
+        combofile.addItem("PDBQT")
+        fflabel = QtWidgets.QLabel("Forcefield:")
+        ffcombo = QtWidgets.QComboBox()
+        ffcombo.addItem("MMFF94")
+        ffcombo.addItem("MMFF94s")
+        ffcombo.addItem("GAFF")
+        ffcombo.addItem("Ghemical")
+        ffcombo.addItem("UFF")
+        prot_label = QtWidgets.QLabel("Protonation:")
+        prot_line = QtWidgets.QLineEdit()
+        prot_line.setText("7.4")
+        stepslabel = QtWidgets.QLabel("Steps:")
+        stepsline = QtWidgets.QLineEdit()
+        stepsline.setText("2500")
+        y_label = QtWidgets.QLabel("Y-Label Processing:")
+        ylabelcombo = QtWidgets.QComboBox()
+        ylabelcombo.addItem("None")
+        ylabelcombo.addItem("pIC50(nm)")
+        ylabelcombo.addItem("pIC50(mm)")
+        ylabelcombo.addItem("LOG")
+        ylabelcombo.addItem("Min-Max")
+        ylabelcombo.addItem("STD scalar")
+
 
         rightLayout.addWidget(saveBtn)
         rightLayout.addWidget(clearBtn)
         rightLayout.addWidget(save3DBtn)
-  
-     
+        rightLayout.addWidget(filelabel)
+        rightLayout.addWidget(combofile)
+        rightLayout.addWidget(fflabel)
+        rightLayout.addWidget(ffcombo)
+        rightLayout.addWidget(prot_label)
+        rightLayout.addWidget(prot_line)
+        rightLayout.addWidget(stepslabel)
+        rightLayout.addWidget(stepsline)
+        rightLayout.addWidget(y_label)
+        rightLayout.addWidget(ylabelcombo)
 
         mainLayout.addWidget(rightWidget, stretch=1)
 
@@ -1219,6 +1556,8 @@ class MainWindow(QtWidgets.QMainWindow):
         
         icon8 = QtGui.QIcon()
         icon8.addPixmap(QtGui.QPixmap(Stereopng), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        iconez = QtGui.QIcon()
+        iconez.addPixmap(QtGui.QPixmap(Stereoezpng), QtGui.QIcon.Normal, QtGui.QIcon.Off)
 
         def checkforRS(checked):
             if checked:
@@ -1230,6 +1569,35 @@ class MainWindow(QtWidgets.QMainWindow):
 
                 setAction("Add")
                 self.statusbar.showMessage("Draw Mode")
+            
+        def checkforEZ(checked):
+            if checked:
+                self.editor._chementitytype = "atom"
+                setAction("EZtoggle")
+                self.statusbar.showMessage("E/Z Toggle Mode")
+
+            else:
+
+                setAction("Add")
+                self.statusbar.showMessage("Draw Mode")
+        self.pushButton_ez = QtWidgets.QPushButton(self.dockWidgetContents_2)
+        self.pushButton_ez.setGeometry(QtCore.QRect(250, 10, 51, 51))
+        self.pushButton_ez.setText("")
+        self.pushButton_ez.setStatusTip("E/Z Toggle")
+        self.pushButton_ez.toggled.connect(checkforEZ)
+        self.pushButton_ez.setIcon(iconez)
+        self.pushButton_ez.setIconSize(QtCore.QSize(36, 65))
+        self.pushButton_ez.setObjectName("pushButton_4")
+        self.pushButton_ez.setCheckable(True)
+        self.pushButton_ez.setStyleSheet("""
+                                          QPushButton:checked {
+                                        background-color: #6272a4; /* Change to your preferred checked color */
+                                        color: #fff;
+                                        border: 2px solid #22223b;
+                                    }
+
+                                        """)
+        
 
         self.pushButton_4.toggled.connect(checkforRS)
         self.pushButton_4.setIcon(icon8)
@@ -1256,7 +1624,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # if Chem.MolToCXSmiles(self.mol) != Chem.MolToCXSmiles(mol):
             self.mol = mol
         self.pushButton_5 = QtWidgets.QPushButton(self.dockWidgetContents_2)
-        self.pushButton_5.setGeometry(QtCore.QRect(250, 10, 51, 51))
+        self.pushButton_5.setGeometry(QtCore.QRect(670, 10, 51, 51))
         self.pushButton_5.setText("")
         icon9 = QtGui.QIcon()
         icon9.addPixmap(QtGui.QPixmap(cleanstr), QtGui.QIcon.Normal, QtGui.QIcon.Off)
@@ -1391,7 +1759,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
                                          """)
         self.pushButton_100 = QtWidgets.QPushButton(self.dockWidgetContents_2)
-        self.pushButton_100.setGeometry(QtCore.QRect(610, 10, 51, 51))
+        self.pushButton_100.setGeometry(QtCore.QRect(730, 10, 51, 51))
         self.pushButton_100.setText("")
         icon15 = QtGui.QIcon()
         icon15.addPixmap(QtGui.QPixmap(copypng), QtGui.QIcon.Normal, QtGui.QIcon.Off)

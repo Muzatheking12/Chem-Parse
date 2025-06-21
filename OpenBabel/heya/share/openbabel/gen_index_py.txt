@@ -1,0 +1,20 @@
+import re
+
+with open("ring-fragments.txt", "r") as f:
+    fragments = f.readlines()
+
+count = 0
+locs = []
+index = ""
+
+for line in fragments:
+    count += len(line)
+    if not " " in line:
+        locs += [count]
+        index += line[:-1]+f" {count}\n"
+
+with open("gen-index.txt", "w") as f:
+    f.write(index)
+
+
+print(locs[:10])
