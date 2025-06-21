@@ -1,6 +1,6 @@
 <h1 style="display: flex; justify-content: space-between; align-items: center;">
   Chem-Parser
-  <img src="Img/ms-draw.ico" alt="Logo" style="width: 64px; height: 64px;">
+  <img src="Img/ms-draw.ico" alt="Logo" style="width: 40px; height: 40px;">
 </h1>
 
 <img src="Img/Chem-Parse.png" alt="Chem Parser Banner" style="max-width: 100%; margin: 20px 0;">
