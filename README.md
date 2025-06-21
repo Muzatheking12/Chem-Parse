@@ -3,7 +3,7 @@
   <img src="Img/ms-draw.ico" alt="Logo" style="width: 40px; height: 40px;">
 </h1>
 
-<img src="Img/Chem-Parse.png" alt="Chem Parser Banner" style="max-width: 100%; margin: 20px 0;">
+<img src="Img/Chem-Parser.png" alt="Chem Parser Banner" style="max-width: 100%; margin: 20px 0;">
 
 **Fast Molecule Sketching with Immediate Parsing to Embedded Table, Translating to Various Output: .XLSX, .SDF, .CSV, .SMI, .MOL2, .PDBQT**
 
