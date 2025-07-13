@@ -27,7 +27,8 @@
 - RDKit  
 - Pandas  
 - PySide6  
-- OpenBabel  
+- OpenBabel
+- DECIMER
 
 ---
 
