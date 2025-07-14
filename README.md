@@ -23,7 +23,7 @@
 
 ## Attribution:
 
-- RDEditor  
+- RDEditor -  https://github.com/EBjerrum/rdeditor
 - RDKit  
 - Pandas  
 - PySide6  
