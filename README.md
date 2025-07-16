@@ -40,7 +40,7 @@
 
 - If the system is in dark mode, it would make the table text white which would make it invisible , better turn to light mode and start Chem-Parse once again
 
-- The installer of v1.1 is available at sourceforge Link: <a href=https://sourceforge.net/projects/chem-parse/ > This is windows installer , if your system is on other OS . Please try to run through python.
+- The installer of v1.1 is available at sourceforge Link: <a href=https://sourceforge.net/projects/chem-parse/ > This is windows installer link, if your system is on other OS . Please try to run through python.
 
 ---
 
