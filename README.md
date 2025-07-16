@@ -32,6 +32,16 @@
 
 ---
 
+## NOTE:
+
+- In the latest version v1.1 , it takes couple of seconds to initialize due to DECIMER loading , and if you are a new user, It would download the models into your local system.
+
+- To begin with , a Dialog message box pops indicating to be patient , Click OK to continue and it will initialise DECIMER before Chem-Parse starts
+
+- If the system is in dark mode, it would make the table text white which would make it invisible , better turn to light mode and start Chem-Parse once again
+
+--
+
 ## Citation:
 
 Muzammil Kabier: **Chem-Parser** - [https://github.com/Muzatheking12/Chem-Parse](https://github.com/Muzatheking12/Chem-Parse)
