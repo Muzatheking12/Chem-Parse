@@ -40,7 +40,7 @@
 
 - If the system is in dark mode, it would make the table text white which would make it invisible , better turn to light mode and start Chem-Parse once again
 
---
+---
 
 ## Citation:
 
